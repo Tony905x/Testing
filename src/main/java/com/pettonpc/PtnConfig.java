@@ -206,5 +206,28 @@ public interface PtnConfig extends Config
 	{
 		return 0; // Default vertical offset
 	}
+
+	@ConfigItem(
+		keyName = "spawnAnimationID",
+		name = "Spawn Animation ID",
+		description = "Enter the spawn animation ID",
+		position = 17
+	)
+	default int spawnAnimationID()
+	{
+		return -1; // Default vertical offset
+	}
+
+	@ConfigItem(
+		keyName = "spawnAnimationDuration",
+		name = "Spawn Animation Duration",
+		description = "Enter how many milliseconds the Spawn Duration will be",
+		position = 18
+	)
+	default int spawnAnimationDuration()
+	{
+		return -1; // Default vertical offset
+	}
+
 }
 

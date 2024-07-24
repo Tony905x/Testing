@@ -59,7 +59,8 @@ public class PtnPlugin extends Plugin
 	protected void startUp()
 	{
 		initializeVariables();
-		animationHandler = new AnimationHandler(client);
+		System.out.println("config: " + config);
+		animationHandler = new AnimationHandler(client, config);
 		hooks.registerRenderableDrawListener(drawListener);
 	}
 
@@ -103,6 +104,7 @@ public class PtnPlugin extends Plugin
 			if (!transmogInitialized)
 			{
 				RuneLiteObject transmogObject = initializeTransmogObject(follower);
+				System.out.println("TransmogObject: " + transmogObject);
 				if (transmogObject != null)
 				{
 					transmogObjects.add(transmogObject);
@@ -154,42 +156,48 @@ public class PtnPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		NpcData selectedNpc = config.selectedNpc();
-		List<Integer> modelIds = selectedNpc.getModelIDs();
-		if (modelIds.isEmpty())
-		{
-			return;
-		}
+		System.out.println("config: " + config);
 
-		if (!event.getGroup().equals(PtnConfig.GROUP))
+		if (event.getGroup().equals("petToNpcTransmog"))
 		{
-			return;
-		}
-
-		if (event.getKey().equals("selectedNpc") || config.enableCustom() || !config.enableCustom())
-		{
-			clientThread.invokeLater(() ->
+			System.out.println("onConfigChanged entered " + transmogInitialized);
+			NpcData selectedNpc = config.selectedNpc();
+			List<Integer> modelIds = selectedNpc.getModelIDs();
+			if (modelIds.isEmpty())
 			{
-				// Create and set the new model
-				Model mergedModel = createNpcModel();
-				if (mergedModel != null)
-				{
-					RuneLiteObject transmogObject = transmogObjects.get(0);
-					transmogObject.setModel(mergedModel);
-					transmogObject.setActive(true);
-					if (config.enableCustom())
-					{
-						transmogObject.setRadius(config.modelRadius());
+				return;
+			}
+//
+//			if (!event.getGroup().equals(PtnConfig.GROUP))
+//			{
+//				return;
+//			}
+
+			if (event.getKey().equals("selectedNpc") || config.enableCustom() || !config.enableCustom())
+			{
+				clientThread.invokeLater(() -> {
+					// Cancel the current animation
+					animationHandler.cancelCurrentAnimation();
+
+					// Create and set the new model
+					Model mergedModel = createNpcModel();
+					if (mergedModel != null) {
+						RuneLiteObject transmogObject = transmogObjects.get(0);
+						transmogObject.setModel(mergedModel);
+						transmogObject.setActive(true);
+						if (config.enableCustom())
+						{
+							transmogObject.setRadius(config.modelRadius());
+						}
+						else
+						{
+							transmogObject.setRadius(selectedNpc.radius);
+						}
+						animationHandler.setTransmogObject(transmogObject);
+						animationHandler.triggerSpawnAnimation();
 					}
-					else
-					{
-						transmogObject.setRadius(selectedNpc.radius);
-					}
-					//call animation handler for transmog spawn animation
-					animationHandler.setTransmogObject(transmogObject);
-					animationHandler.triggerSpawnAnimation();
-				}
-			});
+				});
+			}
 		}
 	}
 
@@ -233,7 +241,7 @@ public class PtnPlugin extends Plugin
 			wasMoving = false;
 			wasStanding = true;
 
-			if (!animationHandler.isSpawning()) { // Check if the spawn animation is in progress
+			if (animationHandler != null && !animationHandler.isSpawning()) {
 				handleStandingAnimation(follower);
 			}
 		}
@@ -245,6 +253,12 @@ public class PtnPlugin extends Plugin
 	// or ClientTick
 	private void handleWalkingAnimation(NPC follower)
 	{
+		if (animationHandler.isSpawning()) {
+			animationHandler.cancelCurrentAnimation();
+			return;
+		}
+
+
 		NpcData selectedNpc = config.selectedNpc();
 		NPC currentFollower = client.getFollower();
 		int walkingAnimationId = (config.enableCustom()) ? config.walkingAnimationId() : selectedNpc.getWalkAnim();
