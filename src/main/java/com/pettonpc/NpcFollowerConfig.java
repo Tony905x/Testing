@@ -4,8 +4,8 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 
-@ConfigGroup(PtnConfig.GROUP)
-public interface PtnConfig extends Config
+@ConfigGroup(NpcFollowerConfig.GROUP)
+public interface NpcFollowerConfig extends Config
 {
 	String GROUP = "petToNpcTransmog";
 
@@ -225,6 +225,17 @@ public interface PtnConfig extends Config
 		position = 18
 	)
 	default int spawnAnimationDuration()
+	{
+		return -1; // Default vertical offset
+	}
+
+	@ConfigItem(
+		keyName = "textLocation",
+		name = "Text Location",
+		description = "Enter where the text will be",
+		position = 19
+	)
+	default int textLocation()
 	{
 		return -1; // Default vertical offset
 	}

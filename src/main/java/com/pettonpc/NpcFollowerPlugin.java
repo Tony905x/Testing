@@ -1,6 +1,7 @@
 package com.pettonpc;
 
 import com.google.inject.Provides;
+import java.util.concurrent.CountDownLatch;
 import net.runelite.api.*;
 import net.runelite.api.coords.Angle;
 import net.runelite.api.coords.LocalPoint;
@@ -15,6 +16,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.callback.ClientThread;
 import javax.inject.Inject;
 import java.util.*;
+import net.runelite.client.ui.overlay.OverlayManager;
 
 @PluginDescriptor(
 	name = "Pet-to-NPC Transmog",
@@ -22,23 +24,28 @@ import java.util.*;
 	tags = {"pet", "npc", "transmog", "companion", "follower"}
 )
 
-public class PtnPlugin extends Plugin
+public class NpcFollowerPlugin extends Plugin
 {
 	@Inject
 	private Client client;
 	@Inject
-	private PtnConfig config;
+	private NpcFollowerConfig config;
+	@Inject
+	private OverlayManager overlayManager;
+	@Inject
+	private TextOverlay textOverlay;
 	@Inject
 	private ClientThread clientThread;
 	@Inject
 	private Hooks hooks;
 
-	private boolean transmogInitialized = false;
+	protected boolean transmogInitialized = false;
 	private LocalPoint lastFollowerLocation;
 	private final Hooks.RenderableDrawListener drawListener = this::shouldDraw;
-	private List<RuneLiteObject> transmogObjects;
+	protected List<RuneLiteObject> transmogObjects;
 	private int previousWalkingFrame = -1;
 	private int previousStandingFrame = -1;
+	private int textClearTick = -1;
 	private int currentFrame;
 	private boolean wasMoving = false;
 	private boolean wasStanding = false;
@@ -50,9 +57,9 @@ public class PtnPlugin extends Plugin
 	private AnimationHandler animationHandler;
 
 	@Provides
-	PtnConfig provideConfig(ConfigManager configManager)
+	NpcFollowerConfig provideConfig(ConfigManager configManager)
 	{
-		return configManager.getConfig(PtnConfig.class);
+		return configManager.getConfig(NpcFollowerConfig.class);
 	}
 
 	@Override
@@ -65,10 +72,25 @@ public class PtnPlugin extends Plugin
 	}
 
 	@Override
-	protected void shutDown()
-	{
+	protected void shutDown() throws InterruptedException {
+		final CountDownLatch latch = new CountDownLatch(1);
+
+		clientThread.invokeLater(() -> {
+			transmogObjects.forEach(transmogObject -> {
+				transmogObject.setActive(false);
+				transmogObject.setFinished(true);
+				System.out.println("shutdown the transmog");
+			});
+			transmogObjects.clear();
+			latch.countDown();  // Signal that the cleanup work is done
+		});
+
+		latch.await();  // Wait for the cleanup work to finish
+
 		hooks.unregisterRenderableDrawListener(drawListener);
 		initializeVariables();
+		overlayManager.remove(textOverlay);
+		System.out.println("reached the end of shutdown");
 	}
 
 	@Subscribe
@@ -86,6 +108,7 @@ public class PtnPlugin extends Plugin
 		transmogObjects = null;
 		previousWalkingFrame = -1;
 		previousStandingFrame = -1;
+
 	}
 
 	//Updating the transmogs location and movement using ClientTick used as a check
@@ -94,6 +117,8 @@ public class PtnPlugin extends Plugin
 	public void onClientTick(ClientTick event)
 	{
 		NPC follower = client.getFollower();
+		NpcData selectedNpc = config.selectedNpc();
+		Actor player = client.getLocalPlayer();
 
 		if (follower != null)
 		{
@@ -107,11 +132,17 @@ public class PtnPlugin extends Plugin
 				System.out.println("TransmogObject: " + transmogObject);
 				if (transmogObject != null)
 				{
-					transmogObjects.add(transmogObject);
+//					transmogObjects.add(transmogObject);
 					transmogInitialized = true;
 					//call animation handler for transmog spawn animation
-					animationHandler.setTransmogObject(transmogObject);
-					animationHandler.triggerSpawnAnimation();
+					if (selectedNpc.name.equals("GnomeChild"))
+					{
+						animationHandler.setTransmogObject(transmogObject);
+						animationHandler.triggerSpawnAnimation();
+						overlayManager.add(textOverlay);
+					}
+
+
 				}
 				else
 				{
@@ -127,6 +158,8 @@ public class PtnPlugin extends Plugin
 	//RuneLiteObject used to create the Model as it allows assigning animation ID's and merging multiple ModelIDs
 	private RuneLiteObject initializeTransmogObject(NPC follower)
 	{
+		transmogObjects.clear();
+
 		RuneLiteObject transmogObject = client.createRuneLiteObject();
 		NpcData selectedNpc = config.selectedNpc();
 
@@ -168,7 +201,7 @@ public class PtnPlugin extends Plugin
 				return;
 			}
 //
-//			if (!event.getGroup().equals(PtnConfig.GROUP))
+//			if (!event.getGroup().equals(NpcFollowerConfig.GROUP))
 //			{
 //				return;
 //			}
@@ -178,6 +211,9 @@ public class PtnPlugin extends Plugin
 				clientThread.invokeLater(() -> {
 					// Cancel the current animation
 					animationHandler.cancelCurrentAnimation();
+
+					// Clear the transmogObjects list
+//					transmogObjects.clear();
 
 					// Create and set the new model
 					Model mergedModel = createNpcModel();
@@ -193,8 +229,11 @@ public class PtnPlugin extends Plugin
 						{
 							transmogObject.setRadius(selectedNpc.radius);
 						}
-						animationHandler.setTransmogObject(transmogObject);
-						animationHandler.triggerSpawnAnimation();
+						if (selectedNpc.name.equals("GnomeChild"))
+						{
+							animationHandler.setTransmogObject(transmogObject);
+							animationHandler.triggerSpawnAnimation();
+						}
 					}
 				});
 			}
