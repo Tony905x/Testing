@@ -40,7 +40,6 @@ public class NpcFollowerPlugin extends Plugin
 	private Hooks hooks;
 
 	protected boolean transmogInitialized = false;
-	private LocalPoint lastFollowerLocation;
 	private final Hooks.RenderableDrawListener drawListener = this::shouldDraw;
 	protected List<RuneLiteObject> transmogObjects;
 	private int previousWalkingFrame = -1;
@@ -55,6 +54,7 @@ public class NpcFollowerPlugin extends Plugin
 	private static final int TILE_TO_LOCAL_UNIT = 128;
 
 	private AnimationHandler animationHandler;
+	private PlayerStateTracker playerStateTracker;
 
 	@Provides
 	NpcFollowerConfig provideConfig(ConfigManager configManager)
@@ -68,11 +68,20 @@ public class NpcFollowerPlugin extends Plugin
 		initializeVariables();
 		System.out.println("config: " + config);
 		animationHandler = new AnimationHandler(client, config);
+		if (client == null) {
+			System.out.println("Client is null");
+		}
+		if (animationHandler == null) {
+			System.out.println("AnimationHandler is null");
+		}
+		playerStateTracker = new PlayerStateTracker(client, animationHandler);
+		overlayManager.add(textOverlay);
 		hooks.registerRenderableDrawListener(drawListener);
 	}
 
 	@Override
-	protected void shutDown() throws InterruptedException {
+	protected void shutDown() throws InterruptedException
+	{
 		final CountDownLatch latch = new CountDownLatch(1);
 
 		clientThread.invokeLater(() -> {
@@ -135,11 +144,10 @@ public class NpcFollowerPlugin extends Plugin
 //					transmogObjects.add(transmogObject);
 					transmogInitialized = true;
 					//call animation handler for transmog spawn animation
-					if (selectedNpc.name.equals("GnomeChild"))
+					if (selectedNpc.name.equals("Gnome Child"))
 					{
 						animationHandler.setTransmogObject(transmogObject);
 						animationHandler.triggerSpawnAnimation();
-						overlayManager.add(textOverlay);
 					}
 
 
@@ -149,9 +157,12 @@ public class NpcFollowerPlugin extends Plugin
 					return;
 				}
 			}
+			if (playerStateTracker != null) {
+				animationHandler.checkAnimationFrame();
+				playerStateTracker.update();
+				updateFollowerMovement(follower);
+			}
 			updateTransmogObject(follower);
-			updateFollowerMovement(follower);
-
 		}
 	}
 
@@ -200,11 +211,6 @@ public class NpcFollowerPlugin extends Plugin
 			{
 				return;
 			}
-//
-//			if (!event.getGroup().equals(NpcFollowerConfig.GROUP))
-//			{
-//				return;
-//			}
 
 			if (event.getKey().equals("selectedNpc") || config.enableCustom() || !config.enableCustom())
 			{
@@ -217,7 +223,8 @@ public class NpcFollowerPlugin extends Plugin
 
 					// Create and set the new model
 					Model mergedModel = createNpcModel();
-					if (mergedModel != null) {
+					if (mergedModel != null)
+					{
 						RuneLiteObject transmogObject = transmogObjects.get(0);
 						transmogObject.setModel(mergedModel);
 						transmogObject.setActive(true);
@@ -229,10 +236,17 @@ public class NpcFollowerPlugin extends Plugin
 						{
 							transmogObject.setRadius(selectedNpc.radius);
 						}
-						if (selectedNpc.name.equals("GnomeChild"))
+						if (selectedNpc.name.equals("Gnome Child"))
 						{
 							animationHandler.setTransmogObject(transmogObject);
-							animationHandler.triggerSpawnAnimation();
+//							animationHandler.triggerSpawnAnimation();
+							playerStateTracker.setSpawning();
+//							overlayManager.add(textOverlay);
+							if (playerStateTracker != null && textOverlay != null) {
+								playerStateTracker.setSpawning();
+								overlayManager.add(textOverlay);
+//								updateFollowerMovement(follower);
+							}
 						}
 					}
 				});
@@ -246,13 +260,12 @@ public class NpcFollowerPlugin extends Plugin
 	//looping when you change states
 	private void updateFollowerMovement(NPC follower)
 	{
-		LocalPoint currentLocation = follower.getLocalLocation();
-		boolean isFollowerMoving = lastFollowerLocation != null && !currentLocation.equals(lastFollowerLocation);
+		PlayerState previousState = playerStateTracker.getPreviousState();
+		PlayerState currentState = playerStateTracker.getCurrentState();
 
-		lastFollowerLocation = currentLocation;
-		if (isFollowerMoving)
+		if (currentState == PlayerState.MOVING)
 		{
-			if (wasStanding)
+			if (previousState == PlayerState.STANDING)
 			{
 				for (RuneLiteObject transmogObject : transmogObjects)
 				{
@@ -262,12 +275,11 @@ public class NpcFollowerPlugin extends Plugin
 					}
 				}
 			}
-			wasStanding = false;
 			handleWalkingAnimation(follower);
 		}
-		else
+		else // currentState is STANDING or SPAWNING
 		{
-			if (wasMoving)
+			if (previousState == PlayerState.MOVING)
 			{
 				for (RuneLiteObject transmogObject : transmogObjects)
 				{
@@ -277,14 +289,14 @@ public class NpcFollowerPlugin extends Plugin
 					}
 				}
 			}
-			wasMoving = false;
-			wasStanding = true;
 
-			if (animationHandler != null && !animationHandler.isSpawning()) {
+			if (animationHandler != null && currentState != PlayerState.SPAWNING)
+			{
 				handleStandingAnimation(follower);
 			}
 		}
 	}
+
 
 	// Animation looping is handled by getAnimationFrame tracks the frames within the walking animation.  Checking
 	// if the previous frame is greater than the current one meaning the animation loop ended. Only resetting the
@@ -292,7 +304,8 @@ public class NpcFollowerPlugin extends Plugin
 	// or ClientTick
 	private void handleWalkingAnimation(NPC follower)
 	{
-		if (animationHandler.isSpawning()) {
+		if (animationHandler.getPlayerState() == PlayerState.SPAWNING)
+		{
 			animationHandler.cancelCurrentAnimation();
 			return;
 		}

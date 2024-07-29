@@ -46,7 +46,6 @@ public class TextOverlay extends Overlay {
 
 			String text = "Hi dad"; // Replace with the text you want to display
 			List<RuneLiteObject> transmogObjects = plugin.transmogObjects;
-			System.out.println("Number of objects: " + transmogObjects.size());
 			for (RuneLiteObject transmogObject : transmogObjects) {
 				if (transmogObject != null) {
 					LocalPoint localPoint = transmogObject.getLocation();

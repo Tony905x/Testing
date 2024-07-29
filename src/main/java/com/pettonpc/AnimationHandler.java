@@ -2,6 +2,7 @@ package com.pettonpc;
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
+import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.Animation;
 import net.runelite.api.Client;
@@ -24,6 +25,11 @@ public class AnimationHandler {
 
 	private boolean isSpawning;
 	private Thread animationThread;
+	private int currentFrame;
+	private int previousFrame;
+
+	@Getter
+	private PlayerState playerState;
 
 	@Provides
 	NpcFollowerConfig provideConfig(ConfigManager configManager) {
@@ -35,32 +41,34 @@ public class AnimationHandler {
 		this.config = config;
 	}
 
-	public boolean isSpawning() {
-		return isSpawning;
-	}
+	//	public boolean isSpawning() {
+//		return isSpawning;
+//	}
 
 	public void triggerSpawnAnimation() {
 		if (transmogObject == null) {
 			return;
 		}
-
 		cancelCurrentAnimation();
 
 		Animation spawnAnimation = client.loadAnimation(config.spawnAnimationID());
-		isSpawning = true;
+		playerState = PlayerState.SPAWNING;
 		transmogObject.setAnimation(spawnAnimation);
 		transmogObject.setShouldLoop(true);
 
 		animationThread = new Thread(() -> {
 			try {
 				Thread.sleep(config.spawnAnimationDuration());
+//				currentFrame = transmogObject.getAnimationFrame();
+//				System.out.println("currentFrame " + currentFrame);
+				System.out.println("playerState " + playerState);
 			} catch (InterruptedException e) {
-				isSpawning = false;
+				playerState = PlayerState.STANDING;
 				transmogObject.setShouldLoop(false);
 				return;
 			}
+			playerState = PlayerState.STANDING;
 			transmogObject.setShouldLoop(false);
-			isSpawning = false;
 		});
 		animationThread.start();
 	}
@@ -69,9 +77,17 @@ public class AnimationHandler {
 		if (animationThread != null && animationThread.isAlive()) {
 			animationThread.interrupt();
 		}
-		isSpawning = false;
+		playerState = PlayerState.STANDING;
 		if (transmogObject != null) {
 			transmogObject.setShouldLoop(false);
 		}
+	}
+
+	public void checkAnimationFrame() {
+//		if (playerState == PlayerState.SPAWNING) {
+			int currentFrame = transmogObject.getAnimationFrame();
+			System.out.println("currentFrame " + currentFrame);
+			System.out.println("playerState " + playerState);
+//		}
 	}
 }

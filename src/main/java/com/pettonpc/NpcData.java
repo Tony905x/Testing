@@ -10,7 +10,7 @@ public enum NpcData
 {
 	WiseOldMan("Wise Old Man", Lists.newArrayList(187, 9103, 4925, 292, 323, 170, 176, 3711, 265, 181), 813, 1146, 60),
 	KONAR("Konar", Lists.newArrayList(36162), 8219, 8218, 60),
-	GnomeChild("GnomeChild", Lists.newArrayList(2909, 2899, 2918), 195, 189, 60),
+	GnomeChild("Gnome Child", Lists.newArrayList(2909, 2899, 2918), 195, 189, 60),
 	Zilyana("Zilyana", Lists.newArrayList(27989, 27937, 27985, 27968, 27990), 6966, 6965, 120),
 	Guthan("Guthan", Lists.newArrayList(6654, 6673, 6642, 6666, 6679, 6710), 813, 1205, 60),
 	Nightmare("Nightmare", Lists.newArrayList(39196), 8593, 8634, 300),
