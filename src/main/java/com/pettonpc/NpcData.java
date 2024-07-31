@@ -17,14 +17,14 @@ public enum NpcData
 	NIEVE("Nieve", Lists.newArrayList(392, 27644, 27640, 19951, 3661, 28827, 9644, 27654, 9640, 11048), 813, 1205, 60),
 	DrunkenDwarf("DrunkenDwarf", Lists.newArrayList(2974, 2986, 2983, 2979, 2981, 2985, 2992), 900, 104, 60);
 
-	// Getters for each property
+	// Properties
 	final String name;
 	final List<Integer> modelIDs;
 	final int standingAnim;
 	final int walkAnim;
 	final int radius;
 
-
+	//Constructor
 	NpcData(String name, List<Integer> modelIDs, int standingAnim, int walkAnim, int radius)
 	{
 		this.name = name;

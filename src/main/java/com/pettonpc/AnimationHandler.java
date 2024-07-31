@@ -2,7 +2,6 @@ package com.pettonpc;
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
-import lombok.Setter;
 import net.runelite.api.Animation;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
@@ -11,51 +10,58 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import java.util.*;
 
-public class AnimationHandler {
-	@Inject
+@SuppressWarnings("LombokSetterMayBeUsed")
+public class AnimationHandler
+{
 	private Client client;
-
-	@Inject
 	private NpcFollowerConfig config;
-
-	@Inject
 	private ClientThread clientThread;
-
-	@Setter
 	private RuneLiteObject transmogObject;
-
-	@Setter
 	private List<RuneLiteObject> transmogObjects;
-
 	private boolean isSpawning;
 	private Thread animationThread;
-//	private List<RuneLiteObject> transmogObjects;
 	private NpcFollowerPlugin npcFollowerPlugin;
 	private int previousWalkingFrame = -1;
 	private int previousStandingFrame = -1;
 	private int currentFrame;
 
 	@Provides
-	NpcFollowerConfig provideConfig(ConfigManager configManager) {
+	NpcFollowerConfig provideConfig(ConfigManager configManager)
+	{
 		return configManager.getConfig(NpcFollowerConfig.class);
 	}
 
-	public AnimationHandler(Client client, NpcFollowerConfig config) {
+	public AnimationHandler(Client client, NpcFollowerConfig config)
+	{
 		this.client = client;
 		this.config = config;
 	}
 
-	public boolean isSpawning() {
+	public boolean isSpawning()
+	{
 		return isSpawning;
 	}
 
-	public void setNpcFollowerPlugin(NpcFollowerPlugin npcFollowerPlugin) {
+	public void setNpcFollowerPlugin(NpcFollowerPlugin npcFollowerPlugin)
+	{
 		this.npcFollowerPlugin = npcFollowerPlugin;
 	}
 
+	public void setTransmogObject(RuneLiteObject transmogObject)
+	{
+		this.transmogObject = transmogObject;
+	}
 
-	public void triggerSpawnAnimation() {
-		if (transmogObject == null) {
+	public void setTransmogObjects(List<RuneLiteObject> transmogObjects)
+	{
+		this.transmogObjects = transmogObjects;
+	}
+
+	public void triggerSpawnAnimation()
+	{
+		if (transmogObject == null)
+		{
+			System.out.println("triggerSpawnAnimation if (transmogObject == null) {");
 			return;
 		}
 
@@ -66,10 +72,18 @@ public class AnimationHandler {
 		transmogObject.setAnimation(spawnAnimation);
 		transmogObject.setShouldLoop(true);
 
+		System.out.println("triggerSpawnAnimation " + transmogObject);
+
 		animationThread = new Thread(() -> {
-			try {
+			try
+			{
 				Thread.sleep(config.spawnAnimationDuration());
-			} catch (InterruptedException e) {
+				System.out.println("animationThread = new Thread(() -> {" + config.spawnAnimationDuration());
+				System.out.println("setShouldloop in thread" + transmogObject.getAnimation());
+			}
+			catch (InterruptedException e)
+			{
+				System.out.println("} catch (InterruptedException e) { ");
 				isSpawning = false;
 				transmogObject.setShouldLoop(false);
 				return;
@@ -80,50 +94,32 @@ public class AnimationHandler {
 		animationThread.start();
 	}
 
-
 	void handleWalkingAnimation(NPC follower)
 	{
-		if (isSpawning()) {
+		if (isSpawning())
+		{
 			cancelCurrentAnimation();
 			return;
 		}
-
 
 		NpcData selectedNpc = config.selectedNpc();
 		NPC currentFollower = client.getFollower();
 		int walkingAnimationId = (config.enableCustom()) ? config.walkingAnimationId() : selectedNpc.getWalkAnim();
 		Animation walkingAnimation = client.loadAnimation(walkingAnimationId);
 
-		if (selectedNpc == null)
+		if (selectedNpc == null || walkingAnimation == null || currentFollower == null)
 		{
 			return;
 		}
 
-
-		if (walkingAnimation == null)
-		{
-			return;
-		}
-
-		if (currentFollower == null)
-		{
-			return;
-		}
-
-		transmogObjects.forEach(transmogObject ->
-		{
+		transmogObjects.forEach(transmogObject -> {
 			if (transmogObject != null)
 			{
 				currentFrame = transmogObject.getAnimationFrame();
 				transmogObject.setActive(true);
 				transmogObject.setShouldLoop(true);
 
-				if (previousWalkingFrame == -1)
-				{
-					transmogObject.setAnimation(walkingAnimation);
-				}
-
-				if (previousWalkingFrame > currentFrame)
+				if (previousWalkingFrame == -1 || previousWalkingFrame > currentFrame)
 				{
 					transmogObject.setAnimation(walkingAnimation);
 				}
@@ -132,7 +128,6 @@ public class AnimationHandler {
 		});
 	}
 
-	//Standing Animation with similar functionality as the walking method
 	void handleStandingAnimation(NPC follower)
 	{
 		NpcData selectedNpc = config.selectedNpc();
@@ -141,19 +136,10 @@ public class AnimationHandler {
 			return;
 		}
 
-		int standingAnimationId;
-
-		if (config.enableCustom())
-		{
-			standingAnimationId = config.standingAnimationId();
-		}
-		else
-		{
-			standingAnimationId = selectedNpc.getStandingAnim();
-		}
-
+		int standingAnimationId = (config.enableCustom()) ? config.standingAnimationId() : selectedNpc.getStandingAnim();
 		Animation standingAnimation = client.loadAnimation(standingAnimationId);
 		NPC followerLoop = client.getFollower();
+
 		for (RuneLiteObject transmogObject : transmogObjects)
 		{
 			if (transmogObject != null && followerLoop != null)
@@ -162,12 +148,7 @@ public class AnimationHandler {
 
 				transmogObject.setActive(true);
 				transmogObject.setShouldLoop(true);
-				if (previousStandingFrame == -1)
-				{
-					transmogObject.setAnimation(standingAnimation);
-				}
-
-				if (previousStandingFrame > currentFrame)
+				if (previousStandingFrame == -1 || previousStandingFrame > currentFrame)
 				{
 					transmogObject.setAnimation(standingAnimation);
 				}
@@ -176,14 +157,15 @@ public class AnimationHandler {
 		}
 	}
 
-
-
-	public void cancelCurrentAnimation() {
-		if (animationThread != null && animationThread.isAlive()) {
+	public void cancelCurrentAnimation()
+	{
+		if (animationThread != null && animationThread.isAlive())
+		{
 			animationThread.interrupt();
 		}
 		isSpawning = false;
-		if (transmogObject != null) {
+		if (transmogObject != null)
+		{
 			transmogObject.setShouldLoop(false);
 		}
 	}

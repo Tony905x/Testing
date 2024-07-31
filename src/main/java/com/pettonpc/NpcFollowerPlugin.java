@@ -23,7 +23,6 @@ import net.runelite.client.ui.overlay.OverlayManager;
 	description = "Customize your pets appearance to be any NPC/Object",
 	tags = {"pet", "npc", "transmog", "companion", "follower"}
 )
-
 public class NpcFollowerPlugin extends Plugin
 {
 	@Inject
@@ -43,10 +42,6 @@ public class NpcFollowerPlugin extends Plugin
 	private LocalPoint lastFollowerLocation;
 	private final Hooks.RenderableDrawListener drawListener = this::shouldDraw;
 	protected List<RuneLiteObject> transmogObjects;
-	private int previousWalkingFrame = -1;
-	private int previousStandingFrame = -1;
-	private int currentFrame;
-	private int textClearTick = -1;
 	private boolean wasMoving = false;
 	private boolean wasStanding = false;
 
@@ -56,17 +51,14 @@ public class NpcFollowerPlugin extends Plugin
 
 	private AnimationHandler animationHandler;
 
-	public int getPreviousWalkingFrame() {
-		return previousWalkingFrame;
+	public boolean isTransmogInitialized() {
+		return transmogInitialized;
 	}
 
-	public int getPreviousStandingFrame() {
-		return previousStandingFrame;
+	public List<RuneLiteObject> getTransmogObjects() {
+		return transmogObjects;
 	}
 
-	public int getCurrentFrame() {
-		return previousStandingFrame;
-	}
 
 	@Provides
 	NpcFollowerConfig provideConfig(ConfigManager configManager)
@@ -78,31 +70,29 @@ public class NpcFollowerPlugin extends Plugin
 	protected void startUp()
 	{
 		initializeVariables();
-		System.out.println("config: " + config);
 		animationHandler = new AnimationHandler(client, config);
 		hooks.registerRenderableDrawListener(drawListener);
 	}
 
 	@Override
-	protected void shutDown() throws InterruptedException {
+	protected void shutDown() throws InterruptedException
+	{
 		final CountDownLatch latch = new CountDownLatch(1);
 
 		clientThread.invokeLater(() -> {
 			transmogObjects.forEach(transmogObject -> {
 				transmogObject.setActive(false);
 				transmogObject.setFinished(true);
-				System.out.println("shutdown the transmog");
 			});
 			transmogObjects.clear();
-			latch.countDown();  // Signal that the cleanup work is done
+			latch.countDown();
 		});
 
-		latch.await();  // Wait for the cleanup work to finish
+		latch.await();
 
 		hooks.unregisterRenderableDrawListener(drawListener);
 		initializeVariables();
 		overlayManager.remove(textOverlay);
-		System.out.println("reached the end of shutdown");
 	}
 
 	@Subscribe
@@ -118,13 +108,8 @@ public class NpcFollowerPlugin extends Plugin
 	{
 		transmogInitialized = false;
 		transmogObjects = null;
-		previousWalkingFrame = -1;
-		previousStandingFrame = -1;
-
 	}
 
-	//Updating the transmogs location and movement using ClientTick used as a check
-	// instead of GameTick as it executes much more frequent and makes the animation smoother
 	@Subscribe
 	public void onClientTick(ClientTick event)
 	{
@@ -141,35 +126,18 @@ public class NpcFollowerPlugin extends Plugin
 			if (!transmogInitialized)
 			{
 				RuneLiteObject transmogObject = initializeTransmogObject(follower);
-				System.out.println("TransmogObject: " + transmogObject);
 				if (transmogObject != null)
 				{
-					transmogObjects.add(transmogObject);
 					transmogInitialized = true;
-					// Set the transmogObject to the animationHandler
 					animationHandler.setTransmogObjects(transmogObjects);
 					animationHandler.setNpcFollowerPlugin(this);
-					if (selectedNpc.name.equals("GnomeChild"))
-					{
-						animationHandler.setTransmogObject(transmogObject);
-						animationHandler.triggerSpawnAnimation();
-						overlayManager.add(textOverlay);
-					}
-
-
-				}
-				else
-				{
-					return;
 				}
 			}
 			updateTransmogObject(follower);
 			updateFollowerMovement(follower);
-
 		}
 	}
 
-	//RuneLiteObject used to create the Model as it allows assigning animation ID's and merging multiple ModelIDs
 	private RuneLiteObject initializeTransmogObject(NPC follower)
 	{
 		transmogObjects.clear();
@@ -199,39 +167,30 @@ public class NpcFollowerPlugin extends Plugin
 		return transmogObject;
 	}
 
-	//builds the new model when config panel altered
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		System.out.println("config: " + config);
-
 		if (event.getGroup().equals("petToNpcTransmog"))
 		{
-			System.out.println("onConfigChanged entered " + transmogInitialized);
 			NpcData selectedNpc = config.selectedNpc();
 			List<Integer> modelIds = selectedNpc.getModelIDs();
 			if (modelIds.isEmpty())
 			{
 				return;
 			}
-//
-//			if (!event.getGroup().equals(NpcFollowerConfig.GROUP))
-//			{
-//				return;
-//			}
+
+			if (!event.getGroup().equals(NpcFollowerConfig.GROUP))
+			{
+				return;
+			}
 
 			if (event.getKey().equals("selectedNpc") || config.enableCustom() || !config.enableCustom())
 			{
 				clientThread.invokeLater(() -> {
-					// Cancel the current animation
 					animationHandler.cancelCurrentAnimation();
-
-					// Clear the transmogObjects list
-//					transmogObjects.clear();
-
-					// Create and set the new model
 					Model mergedModel = createNpcModel();
-					if (mergedModel != null) {
+					if (mergedModel != null)
+					{
 						RuneLiteObject transmogObject = transmogObjects.get(0);
 						transmogObject.setModel(mergedModel);
 						transmogObject.setActive(true);
@@ -243,10 +202,12 @@ public class NpcFollowerPlugin extends Plugin
 						{
 							transmogObject.setRadius(selectedNpc.radius);
 						}
-						if (selectedNpc.name.equals("GnomeChild"))
+						if (selectedNpc.name.equals("Gnome Child"))
 						{
 							animationHandler.setTransmogObject(transmogObject);
 							animationHandler.triggerSpawnAnimation();
+							System.out.println("text added");
+							overlayManager.add(textOverlay);
 						}
 					}
 				});
@@ -254,10 +215,6 @@ public class NpcFollowerPlugin extends Plugin
 		}
 	}
 
-
-	//tracking the location of the in game follower, if it moves to a new location it will execute walking method
-	//otherwise it will execute standing method. wasStanding and wasMoving are necessary to cut off animation
-	//looping when you change states
 	private void updateFollowerMovement(NPC follower)
 	{
 		LocalPoint currentLocation = follower.getLocalLocation();
@@ -294,40 +251,30 @@ public class NpcFollowerPlugin extends Plugin
 			wasMoving = false;
 			wasStanding = true;
 
-			if (animationHandler != null && !animationHandler.isSpawning()) {
+			if (animationHandler != null && !animationHandler.isSpawning())
+			{
 				animationHandler.handleStandingAnimation(follower);
 			}
 		}
 	}
 
-	// Animation looping is handled by getAnimationFrame tracks the frames within the walking animation.  Checking
-	// if the previous frame is greater than the current one meaning the animation loop ended. Only resetting the
-	// animation when at the end of the loop so that the animation doesn't get cut based off the timing of gameTick
-	// or ClientTick
-
-
-	//update the location on every client tick so the transmog doesn't flicker.  Offset added to allow for
-	//gap when larger NPC's are used.  Orientation for larger offsets managed by angle calculations so
-	//that the transmog properly looks at the player
 	private void updateTransmogObject(NPC follower)
 	{
 		WorldView worldView = client.getTopLevelWorldView();
 		LocalPoint followerLocation = follower.getLocalLocation();
 
-		int offsetX = config.offsetX() * TILE_TO_LOCAL_UNIT; // Convert tiles to local units
-		int offsetY = config.offsetY() * TILE_TO_LOCAL_UNIT; // Convert tiles to local units
+		int offsetX = config.offsetX() * TILE_TO_LOCAL_UNIT;
+		int offsetY = config.offsetY() * TILE_TO_LOCAL_UNIT;
 
 		int newX = followerLocation.getX() + offsetX;
 		int newY = followerLocation.getY() + offsetY;
 		LocalPoint newLocation = new LocalPoint(newX, newY);
 
-		// Calculate the angle between the follower and the player
 		Player player = client.getLocalPlayer();
 		int dx = player.getLocalLocation().getX() - newX;
 		int dy = player.getLocalLocation().getY() - newY;
 		int angle;
 
-		// If the offset is set to 0, use the follower's current orientation
 		if (config.offsetX() == 0 && config.offsetY() == 0)
 		{
 			angle = follower.getCurrentOrientation();
@@ -338,7 +285,6 @@ public class NpcFollowerPlugin extends Plugin
 		}
 
 		Angle followerOrientation = new Angle(angle);
-
 
 		if (transmogObjects != null)
 		{
@@ -353,8 +299,6 @@ public class NpcFollowerPlugin extends Plugin
 		}
 	}
 
-	//grab the modelID's from the enum within NpcData file for preset models,
-	//or if custom model ids are used it grabs from config. They are then merged to create a complete model
 	public Model createNpcModel()
 	{
 		NpcData selectedNpc = config.selectedNpc();
@@ -362,7 +306,6 @@ public class NpcFollowerPlugin extends Plugin
 
 		if (config.enableCustom())
 		{
-			// Add custom NPC model IDs if they are valid
 			int[] npcModelIDs = {config.npcModelID1(), config.npcModelID2(), config.npcModelID3(), config.npcModelID4(), config.npcModelID5(), config.npcModelID6(), config.npcModelID7(), config.npcModelID8(), config.npcModelID9(), config.npcModelID10()};
 
 			for (int modelId : npcModelIDs)
@@ -375,30 +318,27 @@ public class NpcFollowerPlugin extends Plugin
 		}
 		else
 		{
-			// Add predefined NPC model IDs
 			modelIds.addAll(selectedNpc.getModelIDs());
 		}
 
 		if (modelIds.isEmpty())
 		{
-			return null; // No NPC is selected or custom data is not set
+			return null;
 		}
 
 		ModelData[] modelDataArray = modelIds.stream().map(client::loadModelData).toArray(ModelData[]::new);
 
 		if (Arrays.stream(modelDataArray).anyMatch(Objects::isNull))
 		{
-			return null; // Return if any model data failed to load
+			return null;
 		}
 
-		// Merge the ModelData objects into a single ModelData
 		ModelData mergedModelData = client.mergeModels(modelDataArray);
 		if (mergedModelData == null)
 		{
 			return null;
 		}
 
-		// Light the merged ModelData to create the final Model
 		Model finalModel = mergedModelData.light();
 		if (finalModel == null)
 		{
@@ -408,7 +348,6 @@ public class NpcFollowerPlugin extends Plugin
 		return finalModel;
 	}
 
-	//hides in game pet
 	boolean shouldDraw(Renderable renderable, boolean drawingUI)
 	{
 		if (renderable instanceof NPC)

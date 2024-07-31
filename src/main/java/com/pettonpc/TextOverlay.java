@@ -1,9 +1,7 @@
 package com.pettonpc;
 
 import com.google.inject.Provides;
-import java.util.List;
 import net.runelite.api.Client;
-import net.runelite.api.FontID;
 import net.runelite.api.Perspective;
 import net.runelite.api.Point;
 import net.runelite.api.RuneLiteObject;
@@ -17,35 +15,28 @@ import net.runelite.client.config.ConfigManager;
 
 import javax.inject.Inject;
 import java.awt.*;
+import java.util.List;
 
 public class TextOverlay extends Overlay {
 	private final NpcFollowerPlugin plugin;
 	private final Client client;
+	private final NpcFollowerConfig config;
+	private final ClientThread clientThread;
 
 	@Inject
-	private NpcFollowerConfig config;
-
-	@Inject
-	private ClientThread clientThread;
-
-	@Provides
-	NpcFollowerConfig provideConfig(ConfigManager configManager) {
-		return configManager.getConfig(NpcFollowerConfig.class);
-	}
-
-	@Inject
-	public TextOverlay(NpcFollowerPlugin plugin, Client client) {
+	public TextOverlay(NpcFollowerPlugin plugin, Client client, NpcFollowerConfig config, ClientThread clientThread) {
 		this.plugin = plugin;
 		this.client = client;
+		this.config = config;
+		this.clientThread = clientThread;
 		setPosition(OverlayPosition.DYNAMIC);
 	}
 
 	@Override
 	public Dimension render(Graphics2D graphics) {
-		if (plugin.transmogInitialized) {
-
+		if (plugin.isTransmogInitialized()) {
 			String text = "Hi dad"; // Replace with the text you want to display
-			List<RuneLiteObject> transmogObjects = plugin.transmogObjects;
+			List<RuneLiteObject> transmogObjects = plugin.getTransmogObjects();
 			for (RuneLiteObject transmogObject : transmogObjects) {
 				if (transmogObject != null) {
 					LocalPoint localPoint = transmogObject.getLocation();
@@ -53,9 +44,6 @@ public class TextOverlay extends Overlay {
 						Point textLocation = Perspective.getCanvasTextLocation(client, graphics, localPoint, text, config.textLocation());
 						if (textLocation != null) {
 							Font font = FontManager.getRunescapeBoldFont();
-//							graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-//							graphics.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-//							graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
 							graphics.setFont(font);
 							Color textColor = Color.YELLOW;
 							OverlayUtil.renderTextLocation(graphics, textLocation, text, textColor);
@@ -67,4 +55,3 @@ public class TextOverlay extends Overlay {
 		return null;
 	}
 }
-
