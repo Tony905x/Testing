@@ -40,12 +40,13 @@ public class NpcFollowerPlugin extends Plugin
 	private Hooks hooks;
 
 	protected boolean transmogInitialized = false;
+	private LocalPoint lastFollowerLocation;
 	private final Hooks.RenderableDrawListener drawListener = this::shouldDraw;
 	protected List<RuneLiteObject> transmogObjects;
 	private int previousWalkingFrame = -1;
 	private int previousStandingFrame = -1;
-	private int textClearTick = -1;
 	private int currentFrame;
+	private int textClearTick = -1;
 	private boolean wasMoving = false;
 	private boolean wasStanding = false;
 
@@ -54,7 +55,18 @@ public class NpcFollowerPlugin extends Plugin
 	private static final int TILE_TO_LOCAL_UNIT = 128;
 
 	private AnimationHandler animationHandler;
-	private PlayerStateTracker playerStateTracker;
+
+	public int getPreviousWalkingFrame() {
+		return previousWalkingFrame;
+	}
+
+	public int getPreviousStandingFrame() {
+		return previousStandingFrame;
+	}
+
+	public int getCurrentFrame() {
+		return previousStandingFrame;
+	}
 
 	@Provides
 	NpcFollowerConfig provideConfig(ConfigManager configManager)
@@ -68,20 +80,11 @@ public class NpcFollowerPlugin extends Plugin
 		initializeVariables();
 		System.out.println("config: " + config);
 		animationHandler = new AnimationHandler(client, config);
-		if (client == null) {
-			System.out.println("Client is null");
-		}
-		if (animationHandler == null) {
-			System.out.println("AnimationHandler is null");
-		}
-		playerStateTracker = new PlayerStateTracker(client, animationHandler);
-		overlayManager.add(textOverlay);
 		hooks.registerRenderableDrawListener(drawListener);
 	}
 
 	@Override
-	protected void shutDown() throws InterruptedException
-	{
+	protected void shutDown() throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(1);
 
 		clientThread.invokeLater(() -> {
@@ -141,13 +144,16 @@ public class NpcFollowerPlugin extends Plugin
 				System.out.println("TransmogObject: " + transmogObject);
 				if (transmogObject != null)
 				{
-//					transmogObjects.add(transmogObject);
+					transmogObjects.add(transmogObject);
 					transmogInitialized = true;
-					//call animation handler for transmog spawn animation
-					if (selectedNpc.name.equals("Gnome Child"))
+					// Set the transmogObject to the animationHandler
+					animationHandler.setTransmogObjects(transmogObjects);
+					animationHandler.setNpcFollowerPlugin(this);
+					if (selectedNpc.name.equals("GnomeChild"))
 					{
 						animationHandler.setTransmogObject(transmogObject);
 						animationHandler.triggerSpawnAnimation();
+						overlayManager.add(textOverlay);
 					}
 
 
@@ -157,12 +163,9 @@ public class NpcFollowerPlugin extends Plugin
 					return;
 				}
 			}
-			if (playerStateTracker != null) {
-				animationHandler.checkAnimationFrame();
-				playerStateTracker.update();
-				updateFollowerMovement(follower);
-			}
 			updateTransmogObject(follower);
+			updateFollowerMovement(follower);
+
 		}
 	}
 
@@ -211,6 +214,11 @@ public class NpcFollowerPlugin extends Plugin
 			{
 				return;
 			}
+//
+//			if (!event.getGroup().equals(NpcFollowerConfig.GROUP))
+//			{
+//				return;
+//			}
 
 			if (event.getKey().equals("selectedNpc") || config.enableCustom() || !config.enableCustom())
 			{
@@ -223,8 +231,7 @@ public class NpcFollowerPlugin extends Plugin
 
 					// Create and set the new model
 					Model mergedModel = createNpcModel();
-					if (mergedModel != null)
-					{
+					if (mergedModel != null) {
 						RuneLiteObject transmogObject = transmogObjects.get(0);
 						transmogObject.setModel(mergedModel);
 						transmogObject.setActive(true);
@@ -236,17 +243,10 @@ public class NpcFollowerPlugin extends Plugin
 						{
 							transmogObject.setRadius(selectedNpc.radius);
 						}
-						if (selectedNpc.name.equals("Gnome Child"))
+						if (selectedNpc.name.equals("GnomeChild"))
 						{
 							animationHandler.setTransmogObject(transmogObject);
-//							animationHandler.triggerSpawnAnimation();
-							playerStateTracker.setSpawning();
-//							overlayManager.add(textOverlay);
-							if (playerStateTracker != null && textOverlay != null) {
-								playerStateTracker.setSpawning();
-								overlayManager.add(textOverlay);
-//								updateFollowerMovement(follower);
-							}
+							animationHandler.triggerSpawnAnimation();
 						}
 					}
 				});
@@ -260,12 +260,13 @@ public class NpcFollowerPlugin extends Plugin
 	//looping when you change states
 	private void updateFollowerMovement(NPC follower)
 	{
-		PlayerState previousState = playerStateTracker.getPreviousState();
-		PlayerState currentState = playerStateTracker.getCurrentState();
+		LocalPoint currentLocation = follower.getLocalLocation();
+		boolean isFollowerMoving = lastFollowerLocation != null && !currentLocation.equals(lastFollowerLocation);
 
-		if (currentState == PlayerState.MOVING)
+		lastFollowerLocation = currentLocation;
+		if (isFollowerMoving)
 		{
-			if (previousState == PlayerState.STANDING)
+			if (wasStanding)
 			{
 				for (RuneLiteObject transmogObject : transmogObjects)
 				{
@@ -275,11 +276,12 @@ public class NpcFollowerPlugin extends Plugin
 					}
 				}
 			}
-			handleWalkingAnimation(follower);
+			wasStanding = false;
+			animationHandler.handleWalkingAnimation(follower);
 		}
-		else // currentState is STANDING or SPAWNING
+		else
 		{
-			if (previousState == PlayerState.MOVING)
+			if (wasMoving)
 			{
 				for (RuneLiteObject transmogObject : transmogObjects)
 				{
@@ -289,114 +291,20 @@ public class NpcFollowerPlugin extends Plugin
 					}
 				}
 			}
+			wasMoving = false;
+			wasStanding = true;
 
-			if (animationHandler != null && currentState != PlayerState.SPAWNING)
-			{
-				handleStandingAnimation(follower);
+			if (animationHandler != null && !animationHandler.isSpawning()) {
+				animationHandler.handleStandingAnimation(follower);
 			}
 		}
 	}
-
 
 	// Animation looping is handled by getAnimationFrame tracks the frames within the walking animation.  Checking
 	// if the previous frame is greater than the current one meaning the animation loop ended. Only resetting the
 	// animation when at the end of the loop so that the animation doesn't get cut based off the timing of gameTick
 	// or ClientTick
-	private void handleWalkingAnimation(NPC follower)
-	{
-		if (animationHandler.getPlayerState() == PlayerState.SPAWNING)
-		{
-			animationHandler.cancelCurrentAnimation();
-			return;
-		}
 
-
-		NpcData selectedNpc = config.selectedNpc();
-		NPC currentFollower = client.getFollower();
-		int walkingAnimationId = (config.enableCustom()) ? config.walkingAnimationId() : selectedNpc.getWalkAnim();
-		Animation walkingAnimation = client.loadAnimation(walkingAnimationId);
-
-		if (selectedNpc == null)
-		{
-			return;
-		}
-
-
-		if (walkingAnimation == null)
-		{
-			return;
-		}
-
-		if (currentFollower == null)
-		{
-			return;
-		}
-
-		transmogObjects.forEach(transmogObject ->
-		{
-			if (transmogObject != null)
-			{
-				currentFrame = transmogObject.getAnimationFrame();
-				transmogObject.setActive(true);
-				transmogObject.setShouldLoop(true);
-
-				if (previousWalkingFrame == -1)
-				{
-					transmogObject.setAnimation(walkingAnimation);
-				}
-
-				if (previousWalkingFrame > currentFrame)
-				{
-					transmogObject.setAnimation(walkingAnimation);
-				}
-				previousWalkingFrame = currentFrame;
-			}
-		});
-	}
-
-	//Standing Animation with similar functionality as the walking method
-	private void handleStandingAnimation(NPC follower)
-	{
-		NpcData selectedNpc = config.selectedNpc();
-		if (selectedNpc == null)
-		{
-			return;
-		}
-
-		int standingAnimationId;
-
-		if (config.enableCustom())
-		{
-			standingAnimationId = config.standingAnimationId();
-		}
-		else
-		{
-			standingAnimationId = selectedNpc.getStandingAnim();
-		}
-
-		Animation standingAnimation = client.loadAnimation(standingAnimationId);
-		NPC followerLoop = client.getFollower();
-		for (RuneLiteObject transmogObject : transmogObjects)
-		{
-			if (transmogObject != null && followerLoop != null)
-			{
-				currentFrame = transmogObject.getAnimationFrame();
-
-				transmogObject.setActive(true);
-				transmogObject.setShouldLoop(true);
-				if (previousStandingFrame == -1)
-				{
-					transmogObject.setAnimation(standingAnimation);
-				}
-
-				if (previousStandingFrame > currentFrame)
-				{
-					transmogObject.setAnimation(standingAnimation);
-				}
-				previousStandingFrame = currentFrame;
-			}
-		}
-	}
 
 	//update the location on every client tick so the transmog doesn't flicker.  Offset added to allow for
 	//gap when larger NPC's are used.  Orientation for larger offsets managed by angle calculations so
