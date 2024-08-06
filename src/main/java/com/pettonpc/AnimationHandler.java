@@ -42,15 +42,15 @@ public class AnimationHandler
 		return isSpawning;
 	}
 
-	public void setNpcFollowerPlugin(NpcFollowerPlugin npcFollowerPlugin)
-	{
-		this.npcFollowerPlugin = npcFollowerPlugin;
-	}
+//	public void setNpcFollowerPlugin(NpcFollowerPlugin npcFollowerPlugin)
+//	{
+//		this.npcFollowerPlugin = npcFollowerPlugin;
+//	}
 
-	public void setTransmogObject(RuneLiteObject transmogObject)
-	{
-		this.transmogObject = transmogObject;
-	}
+//	public void setTransmogObject(RuneLiteObject transmogObject)
+//	{
+//		this.transmogObject = transmogObject;
+//	}
 
 	public void setTransmogObjects(List<RuneLiteObject> transmogObjects)
 	{
@@ -116,6 +116,7 @@ public class AnimationHandler
 			if (transmogObject != null)
 			{
 				System.out.println("TransmogObject walking " + transmogObject );
+				System.out.println("SpotAnims " + transmogObject.getS );
 				currentFrame = transmogObject.getAnimationFrame();
 				transmogObject.setActive(true);
 				transmogObject.setShouldLoop(true);

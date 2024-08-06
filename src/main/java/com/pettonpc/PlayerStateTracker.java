@@ -8,7 +8,6 @@ import net.runelite.api.RuneLiteObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.client.ui.overlay.OverlayManager;
 
-@SuppressWarnings("LombokGetterMayBeUsed")
 public class PlayerStateTracker
 {
 	@Inject
@@ -25,7 +24,7 @@ public class PlayerStateTracker
 	private boolean wasStanding = false;
 	private List<RuneLiteObject> transmogObjects;
 
-//	public PlayerStateTracker(Client client, AnimationHandler animationHandler, List<RuneLiteObject> transmogObjects)
+	//	public PlayerStateTracker(Client client, AnimationHandler animationHandler, List<RuneLiteObject> transmogObjects)
 	public PlayerStateTracker(Client client, AnimationHandler animationHandler)
 	{
 		this.client = client;
@@ -33,63 +32,66 @@ public class PlayerStateTracker
 //		this.transmogObjects = transmogObjects;
 	}
 
-	public void setTransmogObjects(List<RuneLiteObject> transmogObjects) {
+	public void setTransmogObjects(List<RuneLiteObject> transmogObjects)
+	{
 		this.transmogObjects = transmogObjects;
 	}
 
-	public void setCurrentState(PlayerState currentState) {
+	public void setCurrentState(PlayerState currentState)
+	{
 		this.currentState = currentState; // Default state
 	}
 
 	public synchronized void updateFollowerMovement(NPC follower)
 	{
-		System.out.println("transmogObject updatefollowermovement start " + transmogObjects);
-
-		LocalPoint currentLocation = follower.getLocalLocation();
-		boolean isFollowerMoving = lastFollowerLocation != null && !currentLocation.equals(lastFollowerLocation);
-
-		lastFollowerLocation = currentLocation;
-		if (isFollowerMoving)
 		{
-			if (wasStanding)
+//			NPC follower = client.getFollower();
+//		System.out.println("Entered PlayerStateTracker update");
+			if (follower == null)
 			{
-				for (RuneLiteObject transmogObject : transmogObjects)
-				{
-					if (transmogObject != null)
-					{
-						System.out.println("transmogObject.setFinished(true); wasStanding");
-						System.out.println("transmogObject updatefollowermovement wasStanding " + transmogObjects);
-						transmogObject.setFinished(true);
-					}
-				}
+				return;
 			}
-			wasStanding = false;
-			animationHandler.handleWalkingAnimation(follower);
-		}
-		else
-		{
-			if (wasMoving)
-			{
-				for (RuneLiteObject transmogObject : transmogObjects)
-				{
-					if (transmogObject != null)
-					{
-						System.out.println("transmogObject.setFinished(true); wasMoving");
-						System.out.println("transmogObject updatefollowermovement wasMoving " + transmogObjects);
-						transmogObject.setFinished(true);
-					}
-				}
-			}
-			wasMoving = false;
-			wasStanding = true;
 
-			if (animationHandler != null && !animationHandler.isSpawning())
+			LocalPoint currentLocation = follower.getLocalLocation();
+			PlayerState newState;
+
+			if (lastFollowerLocation != null && !currentLocation.equals(lastFollowerLocation))
 			{
-				animationHandler.handleStandingAnimation(follower);
+//			System.out.println("Moving!");
+				newState = PlayerState.MOVING;
+			}
+			else
+			{
+//			System.out.println("Standing!");
+				newState = PlayerState.STANDING;
+			}
+
+			// If the state has changed, cancel the current animation
+			if (newState != currentState)
+			{
+				System.out.println("cancel animation");
+				animationHandler.cancelCurrentAnimation();
+			}
+
+			currentState = newState;
+			lastFollowerLocation = currentLocation;
+
+			switch (newState)
+			{
+				case MOVING:
+					System.out.println("newState walking");
+					animationHandler.handleWalkingAnimation(follower);
+					break;
+				case STANDING:
+					if (animationHandler != null && !animationHandler.isSpawning())
+					{
+						System.out.println("newState standing");
+						animationHandler.handleStandingAnimation(follower);
+					}
+					break;
 			}
 		}
 	}
-
 //	public void setSpawning()
 //	{
 //		currentState = PlayerState.SPAWNING;

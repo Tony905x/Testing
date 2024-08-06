@@ -127,7 +127,7 @@ public class NpcFollowerPlugin extends Plugin
 			{
 				transmogObjects = new ArrayList<>();
 				playerStateTracker.setTransmogObjects(transmogObjects);
-
+				animationHandler.setTransmogObjects(transmogObjects);
 			}
 			if (!transmogInitialized)
 			{
@@ -135,8 +135,7 @@ public class NpcFollowerPlugin extends Plugin
 				if (transmogObject != null)
 				{
 					transmogInitialized = true;
-					animationHandler.setTransmogObjects(transmogObjects);
-					animationHandler.setNpcFollowerPlugin(this);
+//					animationHandler.setNpcFollowerPlugin(this);
 				}
 			}
 
@@ -152,6 +151,7 @@ public class NpcFollowerPlugin extends Plugin
 	{
 		transmogObjects.clear();
 		playerStateTracker.setTransmogObjects(transmogObjects);
+		animationHandler.setTransmogObjects(transmogObjects);
 
 		RuneLiteObject transmogObject = client.createRuneLiteObject();
 		NpcData selectedNpc = config.selectedNpc();
@@ -164,8 +164,6 @@ public class NpcFollowerPlugin extends Plugin
 				transmogObject.setModel(mergedModel);
 				transmogObjects.add(transmogObject);
 				transmogObject.setActive(true);
-				playerStateTracker.setTransmogObjects(transmogObjects);
-
 				if (config.enableCustom())
 				{
 					transmogObject.setRadius(config.modelRadius());
@@ -174,6 +172,8 @@ public class NpcFollowerPlugin extends Plugin
 				{
 					transmogObject.setRadius(selectedNpc.radius);
 				}
+				playerStateTracker.setTransmogObjects(transmogObjects);
+				animationHandler.setTransmogObjects(transmogObjects);
 			}
 		}
 		return transmogObject;
@@ -214,60 +214,18 @@ public class NpcFollowerPlugin extends Plugin
 						{
 							transmogObject.setRadius(selectedNpc.radius);
 						}
+						playerStateTracker.setTransmogObjects(transmogObjects);
+						animationHandler.setTransmogObjects(transmogObjects);
+
 						if (selectedNpc.name.equals("Gnome Child"))
 						{
-							animationHandler.setTransmogObject(transmogObject);
+//							animationHandler.setTransmogObject(transmogObject);
 							animationHandler.triggerSpawnAnimation();
 							System.out.println("text added");
 							overlayManager.add(textOverlay);
 						}
 					}
 				});
-			}
-		}
-	}
-
-	private void updateFollowerMovement(NPC follower)
-	{
-		LocalPoint currentLocation = follower.getLocalLocation();
-		boolean isFollowerMoving = lastFollowerLocation != null && !currentLocation.equals(lastFollowerLocation);
-
-		lastFollowerLocation = currentLocation;
-		if (isFollowerMoving)
-		{
-			if (wasStanding)
-			{
-				for (RuneLiteObject transmogObject : transmogObjects)
-				{
-					if (transmogObject != null)
-					{
-						System.out.println("transmogObject.setFinished(true); wasstanding");
-						transmogObject.setFinished(true);
-					}
-				}
-			}
-			wasStanding = false;
-			animationHandler.handleWalkingAnimation(follower);
-		}
-		else
-		{
-			if (wasMoving)
-			{
-				for (RuneLiteObject transmogObject : transmogObjects)
-				{
-					if (transmogObject != null)
-					{
-						System.out.println("transmogObject.setFinished(true); wasMoving");
-						transmogObject.setFinished(true);
-					}
-				}
-			}
-			wasMoving = false;
-			wasStanding = true;
-
-			if (animationHandler != null && !animationHandler.isSpawning())
-			{
-				animationHandler.handleStandingAnimation(follower);
 			}
 		}
 	}
@@ -308,6 +266,8 @@ public class NpcFollowerPlugin extends Plugin
 				{
 					transmogObject.setLocation(newLocation, worldView.getPlane());
 					transmogObject.setOrientation(followerOrientation.getAngle());
+					playerStateTracker.setTransmogObjects(transmogObjects);
+					animationHandler.setTransmogObjects(transmogObjects);
 				}
 			}
 		}
