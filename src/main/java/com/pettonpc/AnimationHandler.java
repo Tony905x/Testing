@@ -94,7 +94,7 @@ public class AnimationHandler
 		animationThread.start();
 	}
 
-	void handleWalkingAnimation(NPC follower)
+	public synchronized void handleWalkingAnimation(NPC follower)
 	{
 		if (isSpawning())
 		{
@@ -115,6 +115,7 @@ public class AnimationHandler
 		transmogObjects.forEach(transmogObject -> {
 			if (transmogObject != null)
 			{
+				System.out.println("TransmogObject walking " + transmogObject );
 				currentFrame = transmogObject.getAnimationFrame();
 				transmogObject.setActive(true);
 				transmogObject.setShouldLoop(true);
@@ -128,7 +129,7 @@ public class AnimationHandler
 		});
 	}
 
-	void handleStandingAnimation(NPC follower)
+	public synchronized void handleStandingAnimation(NPC follower)
 	{
 		NpcData selectedNpc = config.selectedNpc();
 		if (selectedNpc == null)
@@ -145,7 +146,7 @@ public class AnimationHandler
 			if (transmogObject != null && followerLoop != null)
 			{
 				currentFrame = transmogObject.getAnimationFrame();
-
+				System.out.println("TransmogObject standing " + transmogObject );
 				transmogObject.setActive(true);
 				transmogObject.setShouldLoop(true);
 				if (previousStandingFrame == -1 || previousStandingFrame > currentFrame)

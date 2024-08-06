@@ -50,6 +50,8 @@ public class NpcFollowerPlugin extends Plugin
 	private static final int TILE_TO_LOCAL_UNIT = 128;
 
 	private AnimationHandler animationHandler;
+	private PlayerStateTracker playerStateTracker;
+	private PlayerState playerState;
 
 	public boolean isTransmogInitialized() {
 		return transmogInitialized;
@@ -71,6 +73,7 @@ public class NpcFollowerPlugin extends Plugin
 	{
 		initializeVariables();
 		animationHandler = new AnimationHandler(client, config);
+		playerStateTracker = new PlayerStateTracker(client,animationHandler);
 		hooks.registerRenderableDrawListener(drawListener);
 	}
 
@@ -107,7 +110,8 @@ public class NpcFollowerPlugin extends Plugin
 	private void initializeVariables()
 	{
 		transmogInitialized = false;
-		transmogObjects = null;
+//		transmogObjects = null;
+		transmogObjects = new ArrayList<>();
 	}
 
 	@Subscribe
@@ -122,6 +126,8 @@ public class NpcFollowerPlugin extends Plugin
 			if (transmogObjects == null)
 			{
 				transmogObjects = new ArrayList<>();
+				playerStateTracker.setTransmogObjects(transmogObjects);
+
 			}
 			if (!transmogInitialized)
 			{
@@ -133,14 +139,19 @@ public class NpcFollowerPlugin extends Plugin
 					animationHandler.setNpcFollowerPlugin(this);
 				}
 			}
-			updateTransmogObject(follower);
-			updateFollowerMovement(follower);
+
+
+			System.out.println("main plugin transmog before call " + transmogObjects);
+				updateTransmogObject(follower);
+//				updateFollowerMovement(follower);
+				playerStateTracker.updateFollowerMovement(follower);
 		}
 	}
 
 	private RuneLiteObject initializeTransmogObject(NPC follower)
 	{
 		transmogObjects.clear();
+		playerStateTracker.setTransmogObjects(transmogObjects);
 
 		RuneLiteObject transmogObject = client.createRuneLiteObject();
 		NpcData selectedNpc = config.selectedNpc();
@@ -153,6 +164,7 @@ public class NpcFollowerPlugin extends Plugin
 				transmogObject.setModel(mergedModel);
 				transmogObjects.add(transmogObject);
 				transmogObject.setActive(true);
+				playerStateTracker.setTransmogObjects(transmogObjects);
 
 				if (config.enableCustom())
 				{
@@ -229,6 +241,7 @@ public class NpcFollowerPlugin extends Plugin
 				{
 					if (transmogObject != null)
 					{
+						System.out.println("transmogObject.setFinished(true); wasstanding");
 						transmogObject.setFinished(true);
 					}
 				}
@@ -244,6 +257,7 @@ public class NpcFollowerPlugin extends Plugin
 				{
 					if (transmogObject != null)
 					{
+						System.out.println("transmogObject.setFinished(true); wasMoving");
 						transmogObject.setFinished(true);
 					}
 				}
@@ -347,6 +361,11 @@ public class NpcFollowerPlugin extends Plugin
 
 		return finalModel;
 	}
+
+	public void setTransmogObjects(List<RuneLiteObject> transmogObjects) {
+		this.transmogObjects = transmogObjects;
+	}
+
 
 	boolean shouldDraw(Renderable renderable, boolean drawingUI)
 	{
