@@ -116,7 +116,6 @@ public class AnimationHandler
 			if (transmogObject != null)
 			{
 				System.out.println("TransmogObject walking " + transmogObject );
-				System.out.println("SpotAnims " + transmogObject.getS );
 				currentFrame = transmogObject.getAnimationFrame();
 				transmogObject.setActive(true);
 				transmogObject.setShouldLoop(true);
