@@ -50,6 +50,7 @@ public class NpcFollowerPlugin extends Plugin
 	private static final int TILE_TO_LOCAL_UNIT = 128;
 
 	private AnimationHandler animationHandler;
+	private NpcFollowerPlugin npcFollowerPlugin;
 	private PlayerStateTracker playerStateTracker;
 	private PlayerState playerState;
 
@@ -73,7 +74,7 @@ public class NpcFollowerPlugin extends Plugin
 	{
 		initializeVariables();
 		animationHandler = new AnimationHandler(client, config);
-		playerStateTracker = new PlayerStateTracker(client,animationHandler);
+		playerStateTracker = new PlayerStateTracker(client,animationHandler, npcFollowerPlugin);
 		hooks.registerRenderableDrawListener(drawListener);
 	}
 
@@ -140,7 +141,7 @@ public class NpcFollowerPlugin extends Plugin
 			}
 
 
-			System.out.println("main plugin transmog before call " + transmogObjects);
+//			System.out.println("main plugin transmog before call " + transmogObjects);
 				updateTransmogObject(follower);
 //				updateFollowerMovement(follower);
 				playerStateTracker.updateFollowerMovement(follower);
@@ -217,12 +218,13 @@ public class NpcFollowerPlugin extends Plugin
 						playerStateTracker.setTransmogObjects(transmogObjects);
 						animationHandler.setTransmogObjects(transmogObjects);
 
-						if (selectedNpc.name.equals("Gnome Child"))
+						if (selectedNpc.name.equals("Nightmare"))
 						{
 //							animationHandler.setTransmogObject(transmogObject);
-							animationHandler.triggerSpawnAnimation();
-							System.out.println("text added");
-							overlayManager.add(textOverlay);
+//							animationHandler.triggerSpawnAnimation();
+							playerStateTracker.setCurrentState(PlayerState.SPAWNING);
+//							System.out.println("text added");
+//							overlayManager.add(textOverlay);
 						}
 					}
 				});

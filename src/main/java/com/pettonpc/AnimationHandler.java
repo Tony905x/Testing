@@ -16,13 +16,15 @@ public class AnimationHandler
 	private Client client;
 	private NpcFollowerConfig config;
 	private ClientThread clientThread;
-	private RuneLiteObject transmogObject;
+//	private RuneLiteObject transmogObject;
 	private List<RuneLiteObject> transmogObjects;
 	private boolean isSpawning;
 	private Thread animationThread;
 	private NpcFollowerPlugin npcFollowerPlugin;
 	private int previousWalkingFrame = -1;
 	private int previousStandingFrame = -1;
+	private int previousSpawnFrame = -1;
+	private int currentSpawnFrame = -1;
 	private int currentFrame;
 
 	@Provides
@@ -59,48 +61,43 @@ public class AnimationHandler
 
 	public void triggerSpawnAnimation()
 	{
-		if (transmogObject == null)
+//		cancelCurrentAnimation();
+		isSpawning = true;
+//		System.out.println("spawnAnimation entered" + isSpawning);
+		NpcData selectedNpc = config.selectedNpc();
+		NPC currentFollower = client.getFollower();
+//		int spawnAnimationId = (config.enableCustom()) ? config.spawnAnimationID() : selectedNpc.getSpawnAnim();
+		int spawnAnimationId = config.spawnAnimationID();
+		Animation spawnAnimation = client.loadAnimation(spawnAnimationId);
+
+		if (selectedNpc == null || spawnAnimation == null || currentFollower == null)
 		{
-			System.out.println("triggerSpawnAnimation if (transmogObject == null) {");
+			System.out.println("if (selectedNpc == null || spawnAnimation == null || currentFollower == null)");
 			return;
 		}
 
-		cancelCurrentAnimation();
-
-		Animation spawnAnimation = client.loadAnimation(config.spawnAnimationID());
-		isSpawning = true;
-		transmogObject.setAnimation(spawnAnimation);
-		transmogObject.setShouldLoop(true);
-
-		System.out.println("triggerSpawnAnimation " + transmogObject);
-
-		animationThread = new Thread(() -> {
-			try
+		transmogObjects.forEach(transmogObject -> {
+			if (transmogObject != null)
 			{
-				Thread.sleep(config.spawnAnimationDuration());
-				System.out.println("animationThread = new Thread(() -> {" + config.spawnAnimationDuration());
-				System.out.println("setShouldloop in thread" + transmogObject.getAnimation());
+				System.out.println("TransmogObject spawning " + transmogObject + " " + transmogObject.getAnimationFrame());
+//				System.out.println("spawnAnimation entered2" + isSpawning);
+				System.out.println("animationID " + transmogObject.getAnimation());
+//				currentSpawnFrame = transmogObject.getAnimationFrame();
+				transmogObject.setShouldLoop(true);
+				transmogObject.setActive(true);
+				transmogObject.setAnimation(spawnAnimation);
 			}
-			catch (InterruptedException e)
-			{
-				System.out.println("} catch (InterruptedException e) { ");
-				isSpawning = false;
-				transmogObject.setShouldLoop(false);
-				return;
-			}
-			transmogObject.setShouldLoop(false);
-			isSpawning = false;
 		});
-		animationThread.start();
+//		isSpawning = false;
 	}
 
 	public synchronized void handleWalkingAnimation(NPC follower)
 	{
-		if (isSpawning())
-		{
-			cancelCurrentAnimation();
-			return;
-		}
+//		if (isSpawning())
+//		{
+//			cancelCurrentAnimation();
+////			return;
+//		}
 
 		NpcData selectedNpc = config.selectedNpc();
 		NPC currentFollower = client.getFollower();
@@ -115,7 +112,7 @@ public class AnimationHandler
 		transmogObjects.forEach(transmogObject -> {
 			if (transmogObject != null)
 			{
-				System.out.println("TransmogObject walking " + transmogObject );
+//				System.out.println("TransmogObject walking " + transmogObject );
 				currentFrame = transmogObject.getAnimationFrame();
 				transmogObject.setActive(true);
 				transmogObject.setShouldLoop(true);
@@ -131,6 +128,14 @@ public class AnimationHandler
 
 	public synchronized void handleStandingAnimation(NPC follower)
 	{
+
+		if (isSpawning())
+		{
+//			cancelCurrentAnimation();
+			return;
+		}
+
+
 		NpcData selectedNpc = config.selectedNpc();
 		if (selectedNpc == null)
 		{
@@ -146,7 +151,7 @@ public class AnimationHandler
 			if (transmogObject != null && followerLoop != null)
 			{
 				currentFrame = transmogObject.getAnimationFrame();
-				System.out.println("TransmogObject standing " + transmogObject );
+//				System.out.println("TransmogObject standing " + transmogObject );
 				transmogObject.setActive(true);
 				transmogObject.setShouldLoop(true);
 				if (previousStandingFrame == -1 || previousStandingFrame > currentFrame)
@@ -164,10 +169,13 @@ public class AnimationHandler
 		{
 			animationThread.interrupt();
 		}
-		isSpawning = false;
-		if (transmogObject != null)
+//		isSpawning = false;
+		for (RuneLiteObject transmogObject : transmogObjects)
 		{
-			transmogObject.setShouldLoop(false);
+			if (transmogObject != null)
+			{
+				transmogObject.setShouldLoop(false);
+			}
 		}
 	}
 }
