@@ -15,7 +15,7 @@ public class PlayerStateTracker
 	@Inject
 	private TextOverlay textOverlay;
 
-	private PlayerState currentState = PlayerState.IDLE;
+	private PlayerState currentState;
 //	private PlayerState previousState;
 	private Client client;
 	private NpcFollowerPlugin npcFollowerPlugin;
@@ -24,6 +24,11 @@ public class PlayerStateTracker
 	private boolean wasMoving = false;
 	private boolean wasStanding = false;
 	private List<RuneLiteObject> transmogObjects;
+	public List<RuneLiteObject> getTransmogObjects() {
+		return transmogObjects;
+	}
+//	private PlayerState newState;
+//	private NPC follower = client.getFollower();
 
 	//	public PlayerStateTracker(Client client, AnimationHandler animationHandler, List<RuneLiteObject> transmogObjects)
 	public PlayerStateTracker(Client client, AnimationHandler animationHandler, NpcFollowerPlugin npcFollowerPlugin)
@@ -39,79 +44,120 @@ public class PlayerStateTracker
 		this.transmogObjects = transmogObjects;
 	}
 
+	public void setCurrentState(PlayerState newState)
+	{
+		NPC follower = client.getFollower();
+		this.currentState = newState;
+		System.out.println(newState);
+		updateFollowerMovement(follower);
+		updateFollowerState(follower);
+	}
+
+
+	public PlayerState getCurrentState() {
+		return this.currentState;
+	}
+
+
+
 //	public void setCurrentState()
 //	{
 //		this.currentState = currentState; // Default state
 //	}
 
-	public synchronized void updateFollowerMovement(NPC follower)
+//	public synchronized void updateFollowerMovement(NPC follower)
+	public void updateFollowerMovement(NPC follower)
 	{
-		{
-//			NPC follower = client.getFollower();
-//		System.out.println("Entered PlayerStateTracker update");
-			if (transmogObjects == null) {
+			if (transmogObjects == null)
+			{
+				System.out.println("null object");
 				return;
 			}
 
 			if (follower == null)
 			{
+				System.out.println("Null follower");
+				return;
+			}
+
+			if (currentState == PlayerState.SPAWNING) {
 				return;
 			}
 
 			LocalPoint currentLocation = follower.getLocalLocation();
 			PlayerState newState;
 
+
+
+
+
+//			if (currentState == PlayerState.SPAWNING)
+//			{
+//				updateFollowerState(follower);
+//				return;
+//			}
+
+
+
+//			System.out.println("start of block");
 			if (lastFollowerLocation != null && !currentLocation.equals(lastFollowerLocation))
 			{
-//			System.out.println("Moving!");
+//				System.out.println("MOVING detected");
 				newState = PlayerState.MOVING;
-
 			}
 			else
 			{
-//			System.out.println("Standing!");
+//				System.out.println("STANDING detected");
 				newState = PlayerState.STANDING;
 			}
 
 			// If the state has changed, cancel the current animation
 			if (newState != currentState)
 			{
-				System.out.println("cancel animation");
+					System.out.println("cancel animation");
 				animationHandler.cancelCurrentAnimation();
 			}
 
 			currentState = newState;
+
+
+			updateFollowerState(follower);
 			lastFollowerLocation = currentLocation;
 
-			switch (newState)
+	}
+
+
+//	public synchronized void updateFollowerState(NPC follower)
+	public void updateFollowerState(NPC follower)
+	{
+
+			switch (currentState)
 			{
 				case MOVING:
-//					System.out.println("newState walking");
+//					System.out.println("case MOVING");
 					animationHandler.handleWalkingAnimation(follower);
 					break;
 				case STANDING:
-//					if (animationHandler != null && !animationHandler.isSpawning())
-//						if (animationHandler != null)
-//					{
-//						System.out.println("newState standing");
-						animationHandler.handleStandingAnimation(follower);
-//					}
+//					System.out.println("case STANDING");
+					animationHandler.handleStandingAnimation(follower);
 					break;
 				case SPAWNING:
-					animationHandler.triggerSpawnAnimation();
+//					System.out.println("case SPAWNING:");
+					animationHandler.triggerSpawnAnimation(follower);
+					break;
+				case IDLE:
+//					System.out.println("case IDLE:");
+					updateFollowerMovement(follower);
 					break;
 			}
-		}
 	}
 
-	public void setCurrentState(PlayerState newState)
-	{
-		this.currentState = newState;
-	}
 
-	public PlayerState getCurrentState() {
-		return this.currentState;
-	}
+
+
+
+
+
 
 
 //	public void setSpawning()

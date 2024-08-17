@@ -69,12 +69,22 @@ public class NpcFollowerPlugin extends Plugin
 		return configManager.getConfig(NpcFollowerConfig.class);
 	}
 
+//	@Override
+//	protected void startUp()
+//	{
+//		initializeVariables();
+//		playerStateTracker = new PlayerStateTracker(client,animationHandler, npcFollowerPlugin);
+//		animationHandler = new AnimationHandler(client, config, playerStateTracker);
+//		hooks.registerRenderableDrawListener(drawListener);
+//	}
+
 	@Override
 	protected void startUp()
 	{
 		initializeVariables();
-		animationHandler = new AnimationHandler(client, config);
+		animationHandler = new AnimationHandler(client, config, null); // Pass null for playerStateTracker temporarily
 		playerStateTracker = new PlayerStateTracker(client,animationHandler, npcFollowerPlugin);
+		animationHandler.setPlayerStateTracker(playerStateTracker); // Update playerStateTracker in animationHandler
 		hooks.registerRenderableDrawListener(drawListener);
 	}
 
@@ -200,7 +210,7 @@ public class NpcFollowerPlugin extends Plugin
 			if (event.getKey().equals("selectedNpc") || config.enableCustom() || !config.enableCustom())
 			{
 				clientThread.invokeLater(() -> {
-					animationHandler.cancelCurrentAnimation();
+//					animationHandler.cancelCurrentAnimation();
 					Model mergedModel = createNpcModel();
 					if (mergedModel != null)
 					{
@@ -218,11 +228,13 @@ public class NpcFollowerPlugin extends Plugin
 						playerStateTracker.setTransmogObjects(transmogObjects);
 						animationHandler.setTransmogObjects(transmogObjects);
 
-						if (selectedNpc.name.equals("Nightmare"))
+						if (selectedNpc.name.equals("Gnome Child"))
 						{
+							NPC follower = client.getFollower();
 //							animationHandler.setTransmogObject(transmogObject);
-//							animationHandler.triggerSpawnAnimation();
+//							animationHandler.triggerSpawnAnimation(follower);
 							playerStateTracker.setCurrentState(PlayerState.SPAWNING);
+//							playerStateTracker.setCurrentState(PlayerState.IDLE);
 //							System.out.println("text added");
 //							overlayManager.add(textOverlay);
 						}
@@ -270,6 +282,7 @@ public class NpcFollowerPlugin extends Plugin
 					transmogObject.setOrientation(followerOrientation.getAngle());
 					playerStateTracker.setTransmogObjects(transmogObjects);
 					animationHandler.setTransmogObjects(transmogObjects);
+					System.out.println(transmogObject.getAnimationFrame());
 				}
 			}
 		}
