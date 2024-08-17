@@ -27,6 +27,9 @@ public class PlayerStateTracker
 	public List<RuneLiteObject> getTransmogObjects() {
 		return transmogObjects;
 	}
+	private int WALKING_ANIMATION_ID = 0;
+	private int STANDING_ANIMATION_ID = 0;
+	private int ACTION_ANIMATION_ID;
 //	private PlayerState newState;
 //	private NPC follower = client.getFollower();
 
@@ -86,11 +89,36 @@ public class PlayerStateTracker
 
 			LocalPoint currentLocation = follower.getLocalLocation();
 			PlayerState newState;
+			WALKING_ANIMATION_ID = follower.getWalkAnimation();
+			STANDING_ANIMATION_ID = follower.getIdlePoseAnimation();
+			ACTION_ANIMATION_ID = follower.getPoseAnimation();
+			System.out.println("WalkingAnimationID " + WALKING_ANIMATION_ID);
+			System.out.println("StandingAnimationID " + STANDING_ANIMATION_ID);
+			System.out.println("PoseAnimationFrame " + follower.getPoseAnimationFrame());
+			System.out.println("PoseAnimationFrame " + follower.getIdlePoseAnimation());
 
 
 
+			if (ACTION_ANIMATION_ID == WALKING_ANIMATION_ID) {
+				newState = PlayerState.MOVING;
+			}
+			else {
+				newState = PlayerState.STANDING;
+			}
+
+		if (newState != currentState)
+		{
+			System.out.println("cancel animation");
+			animationHandler.cancelCurrentAnimation();
+		}
+
+		currentState = newState;
 
 
+		updateFollowerState(follower);
+		lastFollowerLocation = currentLocation;
+
+	}
 //			if (currentState == PlayerState.SPAWNING)
 //			{
 //				updateFollowerState(follower);
@@ -100,31 +128,31 @@ public class PlayerStateTracker
 
 
 //			System.out.println("start of block");
-			if (lastFollowerLocation != null && !currentLocation.equals(lastFollowerLocation))
-			{
-//				System.out.println("MOVING detected");
-				newState = PlayerState.MOVING;
-			}
-			else
-			{
-//				System.out.println("STANDING detected");
-				newState = PlayerState.STANDING;
-			}
+//			if (lastFollowerLocation != null && !currentLocation.equals(lastFollowerLocation))
+//			{
+////				System.out.println("MOVING detected");
+//				newState = PlayerState.MOVING;
+//			}
+//			else
+//			{
+////				System.out.println("STANDING detected");
+//				newState = PlayerState.STANDING;
+//			}
+//
+//			// If the state has changed, cancel the current animation
+//			if (newState != currentState)
+//			{
+//					System.out.println("cancel animation");
+//				animationHandler.cancelCurrentAnimation();
+//			}
 
-			// If the state has changed, cancel the current animation
-			if (newState != currentState)
-			{
-					System.out.println("cancel animation");
-				animationHandler.cancelCurrentAnimation();
-			}
+//			currentState = newState;
+//
+//
+//			updateFollowerState(follower);
+//			lastFollowerLocation = currentLocation;
 
-			currentState = newState;
-
-
-			updateFollowerState(follower);
-			lastFollowerLocation = currentLocation;
-
-	}
+//	}
 
 
 //	public synchronized void updateFollowerState(NPC follower)
